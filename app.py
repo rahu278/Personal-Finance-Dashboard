@@ -1,6 +1,8 @@
+```python
 from flask import Flask, render_template, request, redirect, url_for, session, jsonify
 from database import get_connection
 from werkzeug.security import generate_password_hash, check_password_hash
+from psycopg2.extras import RealDictCursor
 
 app = Flask(__name__, template_folder="templats")
 
@@ -58,6 +60,7 @@ def register():
 
             return f"Registration Error: {e}"
 
+
     return render_template("register.html")
 
 
@@ -78,7 +81,7 @@ def login():
             connection = get_connection()
 
             cursor = connection.cursor(
-                dictionary=True
+                cursor_factory=RealDictCursor
             )
 
             cursor.execute(
@@ -115,6 +118,7 @@ def login():
 
             return f"Login Error: {e}"
 
+
     return render_template("login.html")
 
 
@@ -131,11 +135,13 @@ def dashboard():
     connection = get_connection()
 
     cursor = connection.cursor(
-        dictionary=True
+        cursor_factory=RealDictCursor
     )
 
 
+    # =========================
     # TOTAL INCOME
+    # =========================
 
     cursor.execute(
         """
@@ -151,7 +157,9 @@ def dashboard():
     income = cursor.fetchone()["total"]
 
 
+    # =========================
     # TOTAL EXPENSE
+    # =========================
 
     cursor.execute(
         """
@@ -167,7 +175,9 @@ def dashboard():
     expense = cursor.fetchone()["total"]
 
 
+    # =========================
     # TRANSACTIONS
+    # =========================
 
     cursor.execute(
         """
@@ -176,12 +186,11 @@ def dashboard():
             categories.name AS category_name
         FROM transactions
         JOIN categories
-        ON transactions.category_id =
-           categories.id
+        ON transactions.category_id = categories.id
         WHERE transactions.user_id = %s
         ORDER BY
             transaction_date DESC,
-            id DESC
+            transactions.id DESC
         """,
         (session["user_id"],)
     )
@@ -189,7 +198,9 @@ def dashboard():
     transactions = cursor.fetchall()
 
 
+    # =========================
     # CATEGORIES
+    # =========================
 
     cursor.execute(
         """
@@ -206,11 +217,7 @@ def dashboard():
     connection.close()
 
 
-    balance = (
-        float(income)
-        -
-        float(expense)
-    )
+    balance = float(income) - float(expense)
 
 
     return render_template(
@@ -238,7 +245,7 @@ def expense_categories():
     connection = get_connection()
 
     cursor = connection.cursor(
-        dictionary=True
+        cursor_factory=RealDictCursor
     )
 
 
@@ -249,8 +256,7 @@ def expense_categories():
             SUM(transactions.amount) AS total
         FROM transactions
         JOIN categories
-        ON transactions.category_id =
-           categories.id
+        ON transactions.category_id = categories.id
         WHERE transactions.user_id = %s
         AND transactions.type = 'Expense'
         GROUP BY categories.name
@@ -274,11 +280,8 @@ def expense_categories():
 
         result.append(
             {
-                "name":
-                    item["category_name"],
-
-                "total":
-                    float(item["total"])
+                "name": item["category_name"],
+                "total": float(item["total"])
             }
         )
 
@@ -300,16 +303,16 @@ def monthly_data():
     connection = get_connection()
 
     cursor = connection.cursor(
-        dictionary=True
+        cursor_factory=RealDictCursor
     )
 
 
     cursor.execute(
         """
         SELECT
-            DATE_FORMAT(
+            TO_CHAR(
                 transaction_date,
-                '%Y-%m'
+                'YYYY-MM'
             ) AS month,
 
             type,
@@ -321,9 +324,9 @@ def monthly_data():
         WHERE user_id = %s
 
         GROUP BY
-            DATE_FORMAT(
+            TO_CHAR(
                 transaction_date,
-                '%Y-%m'
+                'YYYY-MM'
             ),
             type
 
@@ -359,13 +362,15 @@ def monthly_data():
 
         if row["type"] == "Income":
 
-            months[month]["income"] = \
-                float(row["total"])
+            months[month]["income"] = float(
+                row["total"]
+            )
 
         else:
 
-            months[month]["expense"] = \
-                float(row["total"])
+            months[month]["expense"] = float(
+                row["total"]
+            )
 
 
     return jsonify(
@@ -389,17 +394,13 @@ def add_transaction():
 
     amount = request.form["amount"]
 
-    transaction_type = \
-        request.form["type"]
+    transaction_type = request.form["type"]
 
-    category_id = \
-        request.form["category_id"]
+    category_id = request.form["category_id"]
 
-    description = \
-        request.form["description"]
+    description = request.form["description"]
 
-    transaction_date = \
-        request.form["transaction_date"]
+    transaction_date = request.form["transaction_date"]
 
 
     connection = get_connection()
@@ -407,7 +408,9 @@ def add_transaction():
     cursor = connection.cursor()
 
 
+    # =========================
     # CHECK CATEGORY
+    # =========================
 
     cursor.execute(
         """
@@ -434,7 +437,9 @@ def add_transaction():
         return "Invalid category"
 
 
-    # INSERT
+    # =========================
+    # INSERT TRANSACTION
+    # =========================
 
     cursor.execute(
         """
@@ -497,26 +502,25 @@ def edit_transaction(transaction_id):
     connection = get_connection()
 
     cursor = connection.cursor(
-        dictionary=True
+        cursor_factory=RealDictCursor
     )
 
 
+    # =========================
+    # UPDATE
+    # =========================
+
     if request.method == "POST":
 
-        amount = \
-            request.form["amount"]
+        amount = request.form["amount"]
 
-        transaction_type = \
-            request.form["type"]
+        transaction_type = request.form["type"]
 
-        category_id = \
-            request.form["category_id"]
+        category_id = request.form["category_id"]
 
-        description = \
-            request.form["description"]
+        description = request.form["description"]
 
-        transaction_date = \
-            request.form["transaction_date"]
+        transaction_date = request.form["transaction_date"]
 
 
         cursor.execute(
@@ -531,7 +535,6 @@ def edit_transaction(transaction_id):
                 transaction_date = %s
 
             WHERE id = %s
-
             AND user_id = %s
             """,
             (
@@ -557,7 +560,9 @@ def edit_transaction(transaction_id):
         )
 
 
+    # =========================
     # GET TRANSACTION
+    # =========================
 
     cursor.execute(
         """
@@ -568,12 +573,9 @@ def edit_transaction(transaction_id):
         FROM transactions
 
         JOIN categories
-
-        ON transactions.category_id =
-           categories.id
+        ON transactions.category_id = categories.id
 
         WHERE transactions.id = %s
-
         AND transactions.user_id = %s
         """,
         (
@@ -585,6 +587,10 @@ def edit_transaction(transaction_id):
 
     transaction = cursor.fetchone()
 
+
+    # =========================
+    # CATEGORIES
+    # =========================
 
     cursor.execute(
         """
@@ -638,7 +644,6 @@ def delete_transaction(transaction_id):
         DELETE FROM transactions
 
         WHERE id = %s
-
         AND user_id = %s
         """,
         (
@@ -682,3 +687,4 @@ if __name__ == "__main__":
     app.run(
         debug=True
     )
+```
