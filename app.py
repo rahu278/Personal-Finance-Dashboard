@@ -3,7 +3,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from database import get_connection
 from psycopg2.extras import RealDictCursor
 
-app = Flask(**name**, template_folder="templats")
+app = Flask(__name__, template_folder="templats")
 app.secret_key = "finance-dashboard-secret-key"
 
 # =========================
