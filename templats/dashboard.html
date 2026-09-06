@@ -2,7 +2,6 @@
 <html lang="en">
 
 <head>
-
     <meta charset="UTF-8">
 
     <meta name="viewport"
@@ -12,7 +11,6 @@
 
     <link rel="stylesheet"
           href="{{ url_for('static', filename='css/style.css') }}">
-
 </head>
 
 <body>
@@ -30,7 +28,7 @@
     <div class="nav-right">
 
         <span>
-            Welcome, {{ name }}
+            Welcome, {{ user_name }}
         </span>
 
         <a href="{{ url_for('logout') }}"
@@ -70,7 +68,7 @@
                 <p>Total Income</p>
 
                 <h2>
-                    ₹{{ "%.2f"|format(income) }}
+                    ₹{{ "%.2f"|format(total_income) }}
                 </h2>
 
             </div>
@@ -91,7 +89,7 @@
                 <p>Total Expense</p>
 
                 <h2>
-                    ₹{{ "%.2f"|format(expense) }}
+                    ₹{{ "%.2f"|format(total_expense) }}
                 </h2>
 
             </div>
@@ -118,7 +116,6 @@
             </div>
 
         </div>
-
 
     </div>
 
@@ -228,9 +225,7 @@
                         value="{{ category.id }}"
                         data-type="{{ category.type }}"
                     >
-
                         {{ category.name }}
-
                     </option>
 
                     {% endfor %}
@@ -283,9 +278,7 @@
                     type="submit"
                     class="primary-btn"
                 >
-
                     ➕ Add Transaction
-
                 </button>
 
             </div>
@@ -357,7 +350,6 @@
             </div>
 
         </div>
-
 
     </div>
 
@@ -446,6 +438,7 @@
         </div>
 
 
+
         <!-- TABLE -->
 
         <div class="table-wrapper">
@@ -493,7 +486,7 @@
 
                         <tr
                             data-type="{{ transaction.type }}"
-                            data-category="{{ transaction.category_name }}"
+                            data-category="{{ transaction.category }}"
                         >
 
                             <!-- DATE -->
@@ -527,7 +520,7 @@
                             <!-- CATEGORY -->
 
                             <td>
-                                {{ transaction.category_name }}
+                                {{ transaction.category }}
                             </td>
 
 
@@ -641,7 +634,6 @@
 
         </div>
 
-
     </div>
 
 
@@ -653,8 +645,7 @@
      JAVASCRIPT
 ========================= -->
 
-<script
-    src="{{ url_for('static', filename='js/dashboard.js') }}">
+<script src="{{ url_for('static', filename='js/dashboard.js') }}">
 </script>
 
 
