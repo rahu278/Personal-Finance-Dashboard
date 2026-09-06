@@ -2,19 +2,10 @@
 // PERSONAL FINANCE DASHBOARD
 // ======================================
 
-
-// PAGE LOAD
-
-document.addEventListener(
-    "DOMContentLoaded",
-    function () {
-
-        loadExpenseChart();
-
-        loadMonthlyChart();
-
-    }
-);
+document.addEventListener("DOMContentLoaded", function () {
+    loadExpenseChart();
+    loadMonthlyChart();
+});
 
 
 // ======================================
@@ -22,57 +13,28 @@ document.addEventListener(
 // ======================================
 
 async function loadExpenseChart() {
-
     try {
+        const response = await fetch("/api/expense_categories");
 
-        const response =
-            await fetch(
-                "/api/expense_categories"
-            );
-
-        const data =
-            await response.json();
-
-
-        const canvas =
-            document.getElementById(
-                "expenseChart"
-            );
-
-
-        const legend =
-            document.getElementById(
-                "expenseLegend"
-            );
-
-
-        if (!canvas) {
-            return;
+        if (!response.ok) {
+            throw new Error("Expense API failed");
         }
 
+        const data = await response.json();
 
-        const ctx =
-            canvas.getContext("2d");
+        const canvas = document.getElementById("expenseChart");
+        const legend = document.getElementById("expenseLegend");
 
+        if (!canvas) return;
 
-        ctx.clearRect(
-            0,
-            0,
-            canvas.width,
-            canvas.height
-        );
+        const ctx = canvas.getContext("2d");
 
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        if (
-            !data ||
-            data.length === 0
-        ) {
-
-            ctx.font =
-                "18px Arial";
-
-            ctx.textAlign =
-                "center";
+        if (!data || data.length === 0) {
+            ctx.font = "18px Arial";
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#555";
 
             ctx.fillText(
                 "No expense data available",
@@ -87,29 +49,12 @@ async function loadExpenseChart() {
             return;
         }
 
-
-        drawPieChart(
-            ctx,
-            canvas,
-            data
-        );
-
-
-        createExpenseLegend(
-            legend,
-            data
-        );
-
+        drawPieChart(ctx, canvas, data);
+        createExpenseLegend(legend, data);
 
     } catch (error) {
-
-        console.error(
-            "Expense chart error:",
-            error
-        );
-
+        console.error("Expense chart error:", error);
     }
-
 }
 
 
@@ -117,104 +62,58 @@ async function loadExpenseChart() {
 // PIE CHART
 // ======================================
 
-function drawPieChart(
-    ctx,
-    canvas,
-    data
-) {
+function drawPieChart(ctx, canvas, data) {
 
-    const total =
-        data.reduce(
-            function (sum, item) {
+    const total = data.reduce(function (sum, item) {
+        return sum + Number(item.total);
+    }, 0);
 
-                return sum +
-                    Number(item.total);
+    if (total <= 0) {
+        return;
+    }
 
-            },
-            0
-        );
+    const centerX = canvas.width / 2;
+    const centerY = canvas.height / 2;
 
-
-    const centerX =
-        canvas.width / 2;
-
-
-    const centerY =
-        canvas.height / 2;
-
-
-    const radius =
-        Math.min(
-            centerX,
-            centerY
-        ) - 35;
-
+    const radius = Math.min(centerX, centerY) - 35;
 
     let startAngle = 0;
 
+    data.forEach(function (item, index) {
 
-    data.forEach(
-        function (item, index) {
+        const value = Number(item.total);
 
-            const value =
-                Number(item.total);
+        const sliceAngle =
+            (value / total) * Math.PI * 2;
 
+        const endAngle =
+            startAngle + sliceAngle;
 
-            const sliceAngle =
-                (value / total) *
-                Math.PI *
-                2;
+        ctx.beginPath();
 
+        ctx.moveTo(centerX, centerY);
 
-            const endAngle =
-                startAngle +
-                sliceAngle;
+        ctx.arc(
+            centerX,
+            centerY,
+            radius,
+            startAngle,
+            endAngle
+        );
 
+        ctx.closePath();
 
-            ctx.beginPath();
+        ctx.fillStyle = getChartColor(index);
 
+        ctx.fill();
 
-            ctx.moveTo(
-                centerX,
-                centerY
-            );
+        ctx.strokeStyle = "#ffffff";
+        ctx.lineWidth = 2;
 
+        ctx.stroke();
 
-            ctx.arc(
-                centerX,
-                centerY,
-                radius,
-                startAngle,
-                endAngle
-            );
-
-
-            ctx.closePath();
-
-
-            ctx.fillStyle =
-                getChartColor(index);
-
-
-            ctx.fill();
-
-
-            ctx.strokeStyle =
-                "#ffffff";
-
-
-            ctx.lineWidth = 2;
-
-
-            ctx.stroke();
-
-
-            startAngle =
-                endAngle;
-
-        }
-    );
-
+        startAngle = endAngle;
+    });
 }
 
 
@@ -222,94 +121,51 @@ function drawPieChart(
 // EXPENSE LEGEND
 // ======================================
 
-function createExpenseLegend(
-    legend,
-    data
-) {
+function createExpenseLegend(legend, data) {
 
-    if (!legend) {
-        return;
-    }
-
+    if (!legend) return;
 
     legend.innerHTML = "";
 
+    const total = data.reduce(function (sum, item) {
+        return sum + Number(item.total);
+    }, 0);
 
-    const total =
-        data.reduce(
-            function (sum, item) {
+    data.forEach(function (item, index) {
 
-                return sum +
-                    Number(item.total);
+        const percentage =
+            (
+                Number(item.total) /
+                total *
+                100
+            ).toFixed(1);
 
-            },
-            0
-        );
+        const div = document.createElement("div");
 
+        div.className = "legend-item";
 
-    data.forEach(
-        function (item, index) {
+        const color = document.createElement("span");
 
-            const percentage =
-                (
-                    Number(item.total)
-                    /
-                    total
-                    *
-                    100
-                ).toFixed(1);
+        color.className = "legend-color";
 
+        color.style.backgroundColor =
+            getChartColor(index);
 
-            const div =
-                document.createElement(
-                    "div"
-                );
+        const text = document.createElement("span");
 
+        text.innerText =
+            item.name +
+            " - ₹" +
+            Number(item.total).toFixed(2) +
+            " (" +
+            percentage +
+            "%)";
 
-            div.className =
-                "legend-item";
+        div.appendChild(color);
+        div.appendChild(text);
 
-
-            const color =
-                document.createElement(
-                    "span"
-                );
-
-
-            color.className =
-                "legend-color";
-
-
-            color.style.backgroundColor =
-                getChartColor(index);
-
-
-            const text =
-                document.createElement(
-                    "span"
-                );
-
-
-            text.innerText =
-                item.name +
-                " - ₹" +
-                Number(item.total)
-                    .toFixed(2) +
-                " (" +
-                percentage +
-                "%)";
-
-
-            div.appendChild(color);
-
-            div.appendChild(text);
-
-
-            legend.appendChild(div);
-
-        }
-    );
-
+        legend.appendChild(div);
+    });
 }
 
 
@@ -322,29 +178,22 @@ async function loadMonthlyChart() {
     try {
 
         const response =
-            await fetch(
-                "/api/monthly"
-            );
+            await fetch("/api/monthly");
 
+        if (!response.ok) {
+            throw new Error("Monthly API failed");
+        }
 
         const data =
             await response.json();
 
-
         const canvas =
-            document.getElementById(
-                "monthlyChart"
-            );
+            document.getElementById("monthlyChart");
 
-
-        if (!canvas) {
-            return;
-        }
-
+        if (!canvas) return;
 
         const ctx =
             canvas.getContext("2d");
-
 
         ctx.clearRect(
             0,
@@ -353,17 +202,23 @@ async function loadMonthlyChart() {
             canvas.height
         );
 
+        // Convert object into array
+        const chartData =
+            Object.keys(data).map(function (month) {
 
-        if (
-            !data ||
-            data.length === 0
-        ) {
+                return {
+                    month: month,
+                    income: Number(data[month].Income || 0),
+                    expense: Number(data[month].Expense || 0)
+                };
 
-            ctx.font =
-                "18px Arial";
+            });
 
-            ctx.textAlign =
-                "center";
+        if (chartData.length === 0) {
+
+            ctx.font = "18px Arial";
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#555";
 
             ctx.fillText(
                 "No monthly data available",
@@ -374,13 +229,11 @@ async function loadMonthlyChart() {
             return;
         }
 
-
         drawMonthlyBarChart(
             ctx,
             canvas,
-            data
+            chartData
         );
-
 
     } catch (error) {
 
@@ -390,7 +243,6 @@ async function loadMonthlyChart() {
         );
 
     }
-
 }
 
 
@@ -406,76 +258,57 @@ function drawMonthlyBarChart(
 
     const padding = 55;
 
-
     const chartWidth =
-        canvas.width -
-        padding * 2;
-
+        canvas.width - padding * 2;
 
     const chartHeight =
-        canvas.height -
-        padding * 2;
-
+        canvas.height - padding * 2;
 
     let maximum = 0;
 
+    data.forEach(function (item) {
 
-    data.forEach(
-        function (item) {
+        maximum =
+            Math.max(
+                maximum,
+                Number(item.income),
+                Number(item.expense)
+            );
 
-            maximum =
-                Math.max(
-                    maximum,
-                    Number(item.income),
-                    Number(item.expense)
-                );
-
-        }
-    );
-
+    });
 
     if (maximum === 0) {
         maximum = 100;
     }
 
-
     // AXIS
 
     ctx.beginPath();
-
 
     ctx.moveTo(
         padding,
         padding
     );
 
-
     ctx.lineTo(
         padding,
         canvas.height - padding
     );
-
 
     ctx.lineTo(
         canvas.width - padding,
         canvas.height - padding
     );
 
-
-    ctx.strokeStyle =
-        "#777";
-
+    ctx.strokeStyle = "#777";
 
     ctx.lineWidth = 1;
-
 
     ctx.stroke();
 
 
     const groupWidth =
-        chartWidth /
-        data.length;
-
+        chartWidth / data.length;
 
     const barWidth =
         Math.min(
@@ -484,112 +317,85 @@ function drawMonthlyBarChart(
         );
 
 
-    data.forEach(
-        function (item, index) {
+    data.forEach(function (item, index) {
 
-            const x =
+        const x =
+            padding +
+            groupWidth * index +
+            groupWidth / 2;
+
+
+        const income =
+            Number(item.income);
+
+        const expense =
+            Number(item.expense);
+
+
+        const incomeHeight =
+            (income / maximum) *
+            chartHeight;
+
+        const expenseHeight =
+            (expense / maximum) *
+            chartHeight;
+
+
+        // INCOME
+
+        ctx.fillStyle = "#16a34a";
+
+        ctx.fillRect(
+            x - barWidth - 2,
+            canvas.height -
+                padding -
+                incomeHeight,
+            barWidth,
+            incomeHeight
+        );
+
+
+        // EXPENSE
+
+        ctx.fillStyle = "#dc2626";
+
+        ctx.fillRect(
+            x + 2,
+            canvas.height -
+                padding -
+                expenseHeight,
+            barWidth,
+            expenseHeight
+        );
+
+
+        // MONTH
+
+        ctx.fillStyle = "#333";
+
+        ctx.font = "12px Arial";
+
+        ctx.textAlign = "center";
+
+        ctx.fillText(
+            formatMonth(item.month),
+            x,
+            canvas.height -
                 padding +
-                groupWidth * index +
-                groupWidth / 2;
+                20
+        );
 
-
-            const income =
-                Number(item.income);
-
-
-            const expense =
-                Number(item.expense);
-
-
-            const incomeHeight =
-                (
-                    income /
-                    maximum
-                ) *
-                chartHeight;
-
-
-            const expenseHeight =
-                (
-                    expense /
-                    maximum
-                ) *
-                chartHeight;
-
-
-            // INCOME
-
-            ctx.fillStyle =
-                "#16a34a";
-
-
-            ctx.fillRect(
-                x - barWidth - 2,
-                canvas.height -
-                    padding -
-                    incomeHeight,
-                barWidth,
-                incomeHeight
-            );
-
-
-            // EXPENSE
-
-            ctx.fillStyle =
-                "#dc2626";
-
-
-            ctx.fillRect(
-                x + 2,
-                canvas.height -
-                    padding -
-                    expenseHeight,
-                barWidth,
-                expenseHeight
-            );
-
-
-            // MONTH
-
-            ctx.fillStyle =
-                "#333";
-
-
-            ctx.font =
-                "12px Arial";
-
-
-            ctx.textAlign =
-                "center";
-
-
-            ctx.fillText(
-                formatMonth(
-                    item.month
-                ),
-                x,
-                canvas.height -
-                    padding +
-                    20
-            );
-
-        }
-    );
+    });
 
 
     // LEGEND
 
-    ctx.font =
-        "12px Arial";
+    ctx.font = "12px Arial";
+
+    ctx.textAlign = "left";
 
 
-    ctx.textAlign =
-        "left";
-
-
-    ctx.fillStyle =
-        "#16a34a";
-
+    ctx.fillStyle = "#16a34a";
 
     ctx.fillRect(
         canvas.width - 155,
@@ -598,10 +404,7 @@ function drawMonthlyBarChart(
         12
     );
 
-
-    ctx.fillStyle =
-        "#333";
-
+    ctx.fillStyle = "#333";
 
     ctx.fillText(
         "Income",
@@ -610,9 +413,7 @@ function drawMonthlyBarChart(
     );
 
 
-    ctx.fillStyle =
-        "#dc2626";
-
+    ctx.fillStyle = "#dc2626";
 
     ctx.fillRect(
         canvas.width - 85,
@@ -621,17 +422,13 @@ function drawMonthlyBarChart(
         12
     );
 
-
-    ctx.fillStyle =
-        "#333";
-
+    ctx.fillStyle = "#333";
 
     ctx.fillText(
         "Expense",
         canvas.width - 68,
         25
     );
-
 }
 
 
@@ -641,30 +438,21 @@ function drawMonthlyBarChart(
 
 function formatMonth(month) {
 
-    if (!month) {
-        return "";
-    }
-
+    if (!month) return "";
 
     const parts =
         month.split("-");
-
 
     if (parts.length !== 2) {
         return month;
     }
 
-
-    const year =
-        parts[0];
-
+    const year = parts[0];
 
     const monthNumber =
         Number(parts[1]);
 
-
     const names = [
-
         "Jan",
         "Feb",
         "Mar",
@@ -677,18 +465,13 @@ function formatMonth(month) {
         "Oct",
         "Nov",
         "Dec"
-
     ];
 
-
     return (
-        names[monthNumber - 1]
-        +
-        " "
-        +
+        names[monthNumber - 1] +
+        " " +
         year
     );
-
 }
 
 
@@ -699,7 +482,6 @@ function formatMonth(month) {
 function getChartColor(index) {
 
     const colors = [
-
         "#2563eb",
         "#16a34a",
         "#dc2626",
@@ -710,12 +492,9 @@ function getChartColor(index) {
         "#65a30d",
         "#ea580c",
         "#4f46e5"
-
     ];
-
 
     return colors[
         index % colors.length
     ];
-
 }
